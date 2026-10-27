@@ -1,0 +1,40 @@
+graph TB
+    subgraph Clientes["Clientes"]
+        C1["App Movil"]
+        C2["Cliente Web"]
+        C3["Cliente Socket / Consola"]
+    end
+
+    subgraph Entrada["Capa de Entrada y Balanceo"]
+        NGINX["Nginx / HAProxy<br/>(Load Balancer & SSL Termination)"]
+    end
+
+    subgraph Aplicacion["Capa de Servidores y Workers (Concurrencia)"]
+        S1["Worker 1<br/>(Python Socket/Flask + Pool de Hilos)"]
+        S2["Worker 2<br/>(Python Socket/Flask + Pool de Hilos)"]
+    end
+
+    subgraph Cola["Cola de Mensajes (Desacoplamiento)"]
+        RMQ[("RabbitMQ<br/>(Queue de Tareas Asincronas)")]
+    end
+
+    subgraph Persistencia["Capa de Almacenamiento y Datos"]
+        PG[("PostgreSQL<br/>(Usuarios, Autenticacion, Transacciones)")]
+        S3[("AWS S3 / Cluster de Nodos<br/>(Almacenamiento de Archivos e Imagenes)")]
+    end
+
+    C1 -->|"HTTPS / Sockets"| NGINX
+    C2 -->|"HTTPS / Sockets"| NGINX
+    C3 -->|"Sockets TCP"| NGINX
+
+    NGINX -->|"Balanceo Round Robin"| S1
+    NGINX -->|"Balanceo Round Robin"| S2
+
+    S1 <-->|"Publica / Consume Tareas"| RMQ
+    S2 <-->|"Publica / Consume Tareas"| RMQ
+
+    S1 -->|"Consultas Parametrizadas"| PG
+    S2 -->|"Consultas Parametrizadas"| PG
+
+    S1 -->|"Replicacion / Backup"| S3
+    S2 -->|"Replicacion / Backup"| S3
